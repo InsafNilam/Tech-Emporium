@@ -29,78 +29,106 @@
     searchTerms: `${product.title} ${product.description} ${product.brand} ${product.category}`,
   }));
 
+  let minPrice: number = 0;
+  let maxPrice: number = 10000;
+
   const searchStore = createSearchStore(searchProducts);
-  const unsubscribe = searchStore.subscribe((model) => searchHandler(model));
+  const unsubscribe = searchStore.subscribe((model) =>
+    searchHandler(model, minPrice, maxPrice)
+  );
 
-  onDestroy(() => {
-    unsubscribe();
-  });
+  let rangeDivRef: null | HTMLElement = null;
+  let priceDivRef: null | HTMLElement = null;
+  let sliderDivRef: null | HTMLElement = null;
 
-  let rangeDivRef = null;
-  let priceDivRef = null;
-  let sliderDivRef = null;
-
-  afterUpdate(() => {
-    // Do something with nd, such as adding event listeners, styles, etc.
-    const rangeInput = rangeDivRef.querySelectorAll(
-      ".range-input input"
-    ) as NodeListOf<HTMLInputElement>;
+  function submitValue() {
     const priceInput = priceDivRef.querySelectorAll(
       ".field input"
     ) as NodeListOf<HTMLInputElement>;
-    const range = document.querySelector(".progress") as HTMLInputElement;
+
+    minPrice = parseInt(priceInput[0].value);
+    maxPrice = parseInt(priceInput[1].value);
+
+    searchStore.update((model) => {
+      return model;
+    });
+  }
+
+  function resetValue() {
+    minPrice = 0;
+    maxPrice = 10000;
+  }
+
+  afterUpdate(() => {
+    // Do something with nd, such as adding event listeners, styles, etc.
+    const rangeInput = rangeDivRef?.querySelectorAll(
+      ".range-input input"
+    ) as NodeListOf<HTMLInputElement>;
+    const priceInput = priceDivRef?.querySelectorAll(
+      ".field input"
+    ) as NodeListOf<HTMLInputElement>;
+    const range = sliderDivRef?.querySelector(".progress") as HTMLInputElement;
     let priceGap = 100;
 
-    priceInput.forEach((input) => {
-      input.addEventListener("input", (e) => {
-        let minPrice = parseInt(priceInput[0].value);
-        let maxPrice = parseInt(priceInput[1].value);
+    if (priceInput) {
+      priceInput.forEach((input) => {
+        input.addEventListener("input", (e) => {
+          let minPrice = parseInt(priceInput[0].value);
+          let maxPrice = parseInt(priceInput[1].value);
 
-        // Ensure numeric values for comparison
-        if (!isNaN(minPrice) && !isNaN(maxPrice)) {
-          if (
-            maxPrice - minPrice >= priceGap &&
-            maxPrice <= Number(rangeInput[1].max)
-          ) {
+          // Ensure numeric values for comparison
+          if (!isNaN(minPrice) && !isNaN(maxPrice)) {
             if (
-              (e.target as HTMLInputElement).className.includes("input-min")
+              maxPrice - minPrice >= priceGap &&
+              maxPrice <= Number(rangeInput[1].max)
             ) {
-              rangeInput[0].value = minPrice.toString();
-              range.style.left =
-                (minPrice / Number(rangeInput[0].max)) * 100 + "%";
-            } else {
-              rangeInput[1].value = maxPrice.toString();
-              range.style.right =
-                100 - (maxPrice / Number(rangeInput[1].max)) * 100 + "%";
+              if (
+                (e.target as HTMLInputElement).className.includes("input-min")
+              ) {
+                rangeInput[0].value = minPrice.toString();
+                range.style.left =
+                  (minPrice / Number(rangeInput[0].max)) * 100 + "%";
+              } else {
+                rangeInput[1].value = maxPrice.toString();
+                range.style.right =
+                  100 - (maxPrice / Number(rangeInput[1].max)) * 100 + "%";
+              }
             }
-          }
-        } else {
-          console.warn("Invalid price input. Please enter numbers only."); // Handle non-numeric input
-        }
-      });
-    });
-
-    rangeInput.forEach((input) => {
-      input.addEventListener("input", (e) => {
-        let minVal = parseInt(rangeInput[0].value);
-        let maxVal = parseInt(rangeInput[1].value);
-
-        if (maxVal - minVal < priceGap) {
-          if ((e.target as HTMLInputElement).className.includes("range-min")) {
-            console.log("Hello 1");
-            rangeInput[0].value = (maxVal - priceGap).toString();
           } else {
-            rangeInput[1].value = (minVal + priceGap).toString();
+            console.warn("Invalid price input. Please enter numbers only."); // Handle non-numeric input
           }
-        } else {
-          priceInput[0].value = minVal.toString();
-          priceInput[1].value = maxVal.toString();
-          range.style.left = (minVal / Number(rangeInput[0].max)) * 100 + "%";
-          range.style.right =
-            100 - (maxVal / Number(rangeInput[1].max)) * 100 + "%";
-        }
+        });
       });
-    });
+    }
+
+    if (rangeInput) {
+      rangeInput.forEach((input) => {
+        input.addEventListener("input", (e) => {
+          let minVal = parseInt(rangeInput[0].value);
+          let maxVal = parseInt(rangeInput[1].value);
+
+          if (maxVal - minVal < priceGap) {
+            if (
+              (e.target as HTMLInputElement).className.includes("range-min")
+            ) {
+              rangeInput[0].value = (maxVal - priceGap).toString();
+            } else {
+              rangeInput[1].value = (minVal + priceGap).toString();
+            }
+          } else {
+            priceInput[0].value = minVal.toString();
+            priceInput[1].value = maxVal.toString();
+            range.style.left = (minVal / Number(rangeInput[0].max)) * 100 + "%";
+            range.style.right =
+              100 - (maxVal / Number(rangeInput[1].max)) * 100 + "%";
+          }
+        });
+      });
+    }
+  });
+
+  onDestroy(() => {
+    unsubscribe();
   });
 </script>
 
@@ -264,12 +292,12 @@
       <div class="price-input" bind:this={priceDivRef}>
         <div class="field">
           <span>Min</span>
-          <input type="number" class="input-min" value="2500" />
+          <input type="number" class="input-min" bind:value={minPrice} />
         </div>
         <div class="separator">-</div>
         <div class="field">
           <span>Max</span>
-          <input type="number" class="input-max" value="7500" />
+          <input type="number" class="input-max" bind:value={maxPrice} />
         </div>
       </div>
       <div class="slider" bind:this={sliderDivRef}>
@@ -281,7 +309,7 @@
           class="range-min"
           min="0"
           max="10000"
-          value="2500"
+          bind:value={minPrice}
           step="100"
         />
         <input
@@ -289,18 +317,20 @@
           class="range-max"
           min="0"
           max="10000"
-          value="7500"
+          bind:value={maxPrice}
           step="100"
         />
       </div>
       <div class="w-full flex justify-end items-center my-4">
         <button
           type="button"
+          on:click={resetValue}
           class="text-white bg-red-700 hover:bg-red-800 focus:outline-none focus:ring-4 focus:ring-red-300 font-medium rounded-full text-sm px-5 py-2.5 text-center me-2 dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-900"
           >Reset</button
         >
         <button
           type="button"
+          on:click={submitValue}
           class="text-white bg-green-700 hover:bg-green-800 focus:outline-none focus:ring-4 focus:ring-green-300 font-medium rounded-full text-sm px-5 py-2.5 text-center dark:bg-green-600 dark:hover:bg-green-700 dark:focus:ring-green-800"
           >Submit</button
         >
@@ -334,7 +364,7 @@
     border-radius: 5px;
     text-align: center;
     border: 1px solid #999;
-    -moz-appearance: textfield;
+    appearance: textfield;
   }
   input[type="number"]::-webkit-outer-spin-button,
   input[type="number"]::-webkit-inner-spin-button {
@@ -371,8 +401,7 @@
     top: -5px;
     background: none;
     pointer-events: none;
-    -webkit-appearance: none;
-    -moz-appearance: none;
+    appearance: none;
   }
   input[type="range"]::-webkit-slider-thumb {
     height: 17px;
