@@ -57,6 +57,10 @@
   function resetValue() {
     minPrice = 0;
     maxPrice = 10000;
+
+    searchStore.update((model) => {
+      return model;
+    });
   }
 
   afterUpdate(() => {
